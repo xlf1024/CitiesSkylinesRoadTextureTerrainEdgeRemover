@@ -23,8 +23,10 @@ namespace RoadTextureTerrainEdgeRemover
         {
             Debug.Log("Make settings was called");
             helper.AddCheckbox("hide cliff texture", EraseClipping, (isChecked) => { EraseClipping.value = isChecked; TerrainManagerPatch.RegenerateCache(); });
+            helper.AddCheckbox("temporarily disable the mod (for quick comparison)", TempDisable, (isChecked) => { TempDisable = isChecked; TerrainManagerPatch.RegenerateCache(); });
         }
 
         public static SavedBool EraseClipping { get; } = new SavedBool(nameof(EraseClipping), FileName, false, true);
+        public static bool TempDisable = false;
     }
 }

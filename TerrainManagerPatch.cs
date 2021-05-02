@@ -43,16 +43,19 @@ namespace RoadTextureTerrainEdgeRemover
         [HarmonyPatch(typeof(TerrainPatch), "Refresh")]
         static void RefreshPostfix(bool updateWater, uint waterFrame, TerrainPatch __instance)
         {
-            if (GetDetailHeightCalled || ForceUpdate)
+            if (!Settings.TempDisable)
             {
-                if (__instance.m_surfaceMapA != null) UpdateSubstituteTexture(__instance.m_surfaceMapA);
-                Debug.Log("TerrainPatch::Refresh");
+                if (GetDetailHeightCalled || ForceUpdate)
+                {
+                    if (__instance.m_surfaceMapA != null) UpdateSubstituteTexture(__instance.m_surfaceMapA);
+                    Debug.Log("TerrainPatch::Refresh");
+                }
             }
         }
 
         public static Texture2D GetOrCreateSubstituteTexture(Texture2D surfaceMapA)
         {
-            if (Settings.EraseClipping) return surfaceMapA;
+            if (Settings.EraseClipping || Settings.TempDisable) return surfaceMapA;
 
             Texture2D surfaceMapAwithoutNormal;
             if (!SubstituteTextures.TryGetValue(surfaceMapA, out surfaceMapAwithoutNormal))
@@ -69,7 +72,7 @@ namespace RoadTextureTerrainEdgeRemover
         }
         public static void UpdateSubstituteTexture(Texture2D surfaceMapA, Texture2D surfaceMapAwithoutNormal)
         {
-            if(surfaceMapA.width != surfaceMapAwithoutNormal.width || surfaceMapA.height != surfaceMapAwithoutNormal.height)
+            if (surfaceMapA.width != surfaceMapAwithoutNormal.width || surfaceMapA.height != surfaceMapAwithoutNormal.height)
             {
                 surfaceMapAwithoutNormal.Resize(surfaceMapA.width, surfaceMapA.height);
             }
