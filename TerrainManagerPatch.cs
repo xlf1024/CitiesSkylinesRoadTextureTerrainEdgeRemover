@@ -22,21 +22,21 @@ namespace RoadTextureTerrainEdgeRemover
             Debug.Log("TerrainManager::GetSurfaceMapping");
         }
 
-        // GetDetailHeight serves as a detection mechanism on whether or not the current run of TerrainPatch::Refresh() actually changed the normal maps.
-        // All branches that write to SurfaceMapA call TerrainManager::GetDetailHeight(), so it serves as an indicator on whether we need to erase normal map data or not.
-        static bool GetDetailHeightCalled = false;
+        // Texture2D::Apply serves as a detection mechanism on whether or not the current run of TerrainPatch::Refresh() actually changed the normal maps.
+        // All branches that write to SurfaceMapA call Texture2D::Apply(), so it serves as an indicator on whether we need to erase normal map data or not.
+        static bool TextureApplyCalled = false;
         static bool ForceUpdate = false;
         [HarmonyPrefix]
-        [HarmonyPatch(typeof(TerrainManager), "GetDetailHeight")]
-        static void GetDetailHeightPrefix()
+        [HarmonyPatch(typeof(Texture2D), "Apply", typeof(bool))]
+        static void TextureApplyPrefix()
         {
-            GetDetailHeightCalled = true;
+            TextureApplyCalled = true;
         }
         [HarmonyPrefix]
         [HarmonyPatch(typeof(TerrainPatch), "Refresh")]
         static void RefreshPrefix()
         {
-            GetDetailHeightCalled = false;
+            TextureApplyCalled = false;
         }
         //TODO: Maybe replace with transpiler so that the normal maps arent created in the first place?
         [HarmonyPostfix]
@@ -45,7 +45,7 @@ namespace RoadTextureTerrainEdgeRemover
         {
             if (!Settings.TempDisable)
             {
-                if (GetDetailHeightCalled || ForceUpdate)
+                if (TextureApplyCalled || ForceUpdate)
                 {
                     if (__instance.m_surfaceMapA != null) UpdateSubstituteTexture(__instance.m_surfaceMapA);
                     Debug.Log("TerrainPatch::Refresh");
@@ -77,20 +77,52 @@ namespace RoadTextureTerrainEdgeRemover
                 surfaceMapAwithoutNormal.Resize(surfaceMapA.width, surfaceMapA.height);
             }
             var buffer = surfaceMapA.GetPixels32();
-            for (int i = 0; i < buffer.Length; i++)
+            switch ((Modes)Settings.Mode.value)
             {
-                buffer[i].b = 127;// 0.498039216f;
-                buffer[i].a = 127;// 0.498039216f;
+                case Modes.Erase:
+                    {
+                        for (int i = 0; i < buffer.Length; i++)
+                        {
+                            buffer[i].b = 127;// 0.498039216f;
+                            buffer[i].a = 127;// 0.498039216f;
+                        }
+                        break;
+                    }
+                case Modes.Clamp:
+                    {
+                        byte min = Util.Clamp((byte)Settings.Strength.value, 0, 127);
+                        byte max = (byte)(255 - min);
+                        for (int i = 0; i < buffer.Length; i++)
+                        {
+                            buffer[i].b = Util.Clamp(buffer[i].b, min, max);
+                            buffer[i].a = Util.Clamp(buffer[i].a, min, max);
+                        }
+                        break;
+                    }
+                case Modes.Scale:
+                    {
+                        byte strength = Util.Clamp((byte)Settings.Strength.value, 0, 128);
+                        byte keep = (byte)(128 - strength);
+                        byte offset = strength;
+                        for (int i = 0; i < buffer.Length; i++)
+                        {
+                            buffer[i].b = (byte)(((buffer[i].b * keep) >> 7) + offset);
+                            buffer[i].a = (byte)(((buffer[i].a * keep) >> 7) + offset);
+                        }
+                        break;
+                    }
             }
             surfaceMapAwithoutNormal.SetPixels32(buffer);
             surfaceMapAwithoutNormal.Apply();
         }
+        
 
         // Reassign all surface maps; force normals regeneration (necessary in case Settings.EraseClipping changed); and force all Nets to refetch their Textures.
         public static void RegenerateCache()
         {
-            ForceUpdate = true;
+            //ForceUpdate = true;
             Debug.Log("regenerating surface texture cache");
+            Settings.LogSettings();
             SubstituteTextures.Clear();
             TerrainManager terrainManager = Singleton<TerrainManager>.instance;
             for (int i = 0; i < terrainManager.m_patches.Length; i++)
