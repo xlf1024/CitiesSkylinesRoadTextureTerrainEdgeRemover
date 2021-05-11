@@ -25,7 +25,9 @@ namespace RoadTextureTerrainEdgeRemover
         private static UITextField strengthNumber = null;
         public static void OnSettingsUI(UIHelperBase helper)
         {
+#if DEBUG
             Debug.Log("Make settings was called");
+#endif
             helper.AddCheckbox("hide cliff texture", EraseClipping, (isChecked) => { EraseClipping.value = isChecked; TerrainManagerPatch.RegenerateCache(); });
             var modeDropdown = helper.AddDropdown("operating mode", Enum.GetNames(typeof(Modes)), Mode.value, (value) => { Mode.value = value; TerrainManagerPatch.RegenerateCache(); }) as UIDropDown;
             void OnStrengthChanged(int strength, bool apply)

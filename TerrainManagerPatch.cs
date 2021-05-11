@@ -19,7 +19,9 @@ namespace RoadTextureTerrainEdgeRemover
         static void GetSurfaceMappingPostfix(ref Vector3 worldPos, ref Texture _SurfaceTexA, ref Texture _SurfaceTexB, ref Vector4 _SurfaceMapping)
         {
             _SurfaceTexA = GetOrCreateSubstituteTexture(_SurfaceTexA as Texture2D);
+#if DEBUG
             Debug.Log("TerrainManager::GetSurfaceMapping");
+#endif
         }
 
         // Texture2D::Apply serves as a detection mechanism on whether or not the current run of TerrainPatch::Refresh() actually changed the normal maps.
@@ -48,7 +50,9 @@ namespace RoadTextureTerrainEdgeRemover
                 if (TextureApplyCalled || ForceUpdate)
                 {
                     if (__instance.m_surfaceMapA != null) UpdateSubstituteTexture(__instance.m_surfaceMapA);
+#if DEBUG
                     Debug.Log("TerrainPatch::Refresh");
+#endif
                 }
             }
         }
@@ -62,7 +66,9 @@ namespace RoadTextureTerrainEdgeRemover
             {
                 surfaceMapAwithoutNormal = Texture2D.Instantiate<Texture2D>(surfaceMapA);
                 SubstituteTextures.Add(surfaceMapA, surfaceMapAwithoutNormal);
+#if DEBUG
                 Debug.Log("Substitute texture count:" + SubstituteTextures.Count);
+#endif
             }
             return surfaceMapAwithoutNormal;
         }

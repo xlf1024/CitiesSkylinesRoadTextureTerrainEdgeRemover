@@ -15,7 +15,9 @@ namespace RoadTextureTerrainEdgeRemover {
             patched = true;
 
             // Apply your patches here!
+#if DEBUG
             Harmony.DEBUG = true;
+#endif
             var harmony = new Harmony("xlf1024.RoadTextureTerrainEdgeRemover");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
         }
