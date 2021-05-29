@@ -35,7 +35,7 @@ namespace RoadTextureTerrainEdgeRemover
             TextureApplyCalled = true;
         }
         [HarmonyPrefix]
-        [HarmonyPatch(typeof(NetManager),"UpdateNodeRenderer")]
+        [HarmonyPatch(typeof(NetManager), "UpdateNodeRenderer")]
         static void ThreadChecker()
         {
             Debug.Log("in sim thread?: " + (Thread.CurrentThread == Singleton<SimulationManager>.instance.m_simulationThread));
@@ -56,18 +56,26 @@ namespace RoadTextureTerrainEdgeRemover
         {
             int sinceSurfaceMapALoaded = 10;
             bool injected = false;
+            bool lastFieldLoadedWasSurfMapA = false;
             foreach (var instruction in instructions)
             {
                 sinceSurfaceMapALoaded++;
-                yield return instruction;
-                if (instruction.LoadsField(typeof(TerrainPatch).GetField("m_surfaceMapA")))
+                if (instruction.opcode == OpCodes.Ldfld)
                 {
-                    sinceSurfaceMapALoaded = 0;
+                    lastFieldLoadedWasSurfMapA = instruction.LoadsField(typeof(TerrainPatch).GetField("m_surfaceMapA"));
                 }
-                if (!injected && sinceSurfaceMapALoaded<=2 && instruction.Calls(typeof(Texture2D).GetMethod("Apply", new Type[] {typeof(bool)})))
+                if (lastFieldLoadedWasSurfMapA && instruction.Calls(typeof(Texture2D).GetMethod("SetPixel", new Type[] { typeof(int), typeof(int), typeof(Color) })))
                 {
-                    yield return CodeInstruction.Call(typeof(TerrainManagerPatch), "OnTextureApplyCalled");
-                    injected = true;
+                    yield return new CodeInstruction(OpCodes.Ldarg_0); //this
+                    yield return CodeInstruction.Call(typeof(TerrainManagerPatch), "SetSurfaceMapAPixelReplacement");
+                }else if (lastFieldLoadedWasSurfMapA && instruction.Calls(typeof(Texture2D).GetMethod("Apply", new Type[] { typeof(bool) })))
+                {
+                    yield return new CodeInstruction(OpCodes.Ldarg_0); //this
+                    yield return CodeInstruction.Call(typeof(TerrainManagerPatch), "ApplySurfaceMapAReplacement");
+                }
+                else
+                {
+                    yield return instruction;
                 }
 
             }
@@ -81,7 +89,7 @@ namespace RoadTextureTerrainEdgeRemover
             {
                 if (TextureApplyCalled || ForceUpdate)
                 {
-                    if (__instance.m_surfaceMapA != null) UpdateSubstituteTexture(__instance.m_surfaceMapA);
+                    //if (__instance.m_surfaceMapA != null) UpdateSubstituteTexture(__instance.m_surfaceMapA);
 #if DEBUG
                     Debug.Log("TerrainPatch::Refresh");
 #endif
@@ -89,6 +97,26 @@ namespace RoadTextureTerrainEdgeRemover
             }
         }
 
+        public static void SetSurfaceMapAPixelReplacement(Texture2D surfaceMapA, int x, int y, Color color, TerrainPatch patch)
+        {
+            var replacedSurfaceMapA = GetOrCreateSubstituteTexture(surfaceMapA);
+            var newcolor = changeColor(color);
+            replacedSurfaceMapA.SetPixel(x, y, newcolor);
+            if(replacedSurfaceMapA != surfaceMapA)
+            {
+                surfaceMapA.SetPixel(x, y, color);
+            }
+
+        }
+        public static void ApplySurfaceMapAReplacement(Texture2D surfaceMapA, bool argo, TerrainPatch patch)
+        {
+            var replacedSurfaceMapA = GetOrCreateSubstituteTexture(surfaceMapA);
+            replacedSurfaceMapA.Apply(argo);
+            if (replacedSurfaceMapA != surfaceMapA)
+            {
+                surfaceMapA.Apply(argo);
+            }
+        }
         public static Texture2D GetOrCreateSubstituteTexture(Texture2D surfaceMapA)
         {
             if (Settings.EraseClipping || Settings.TempDisable) return surfaceMapA;
@@ -115,26 +143,31 @@ namespace RoadTextureTerrainEdgeRemover
                 surfaceMapAwithoutNormal.Resize(surfaceMapA.width, surfaceMapA.height);
             }
             var buffer = surfaceMapA.GetPixels32();
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                buffer[i] = changeColor(buffer[i]);
+            }
+            surfaceMapAwithoutNormal.SetPixels32(buffer);
+            surfaceMapAwithoutNormal.Apply();
+        }
+        static Color32 changeColor(Color32 original)
+        {
+            var newcolor = original;
             switch ((Modes)Settings.Mode.value)
             {
                 case Modes.Erase:
                     {
-                        for (int i = 0; i < buffer.Length; i++)
-                        {
-                            buffer[i].b = 127;// 0.498039216f;
-                            buffer[i].a = 127;// 0.498039216f;
-                        }
+                        newcolor.b = 127;// 0.498039216f;
+                        newcolor.a = 127;// 0.498039216f;
+
                         break;
                     }
                 case Modes.Clamp:
                     {
                         byte min = Util.Clamp((byte)Settings.Strength.value, 0, 127);
                         byte max = (byte)(255 - min);
-                        for (int i = 0; i < buffer.Length; i++)
-                        {
-                            buffer[i].b = Util.Clamp(buffer[i].b, min, max);
-                            buffer[i].a = Util.Clamp(buffer[i].a, min, max);
-                        }
+                        newcolor.b = Util.Clamp(original.b, min, max);
+                        newcolor.a = Util.Clamp(original.a, min, max);
                         break;
                     }
                 case Modes.Scale:
@@ -142,18 +175,14 @@ namespace RoadTextureTerrainEdgeRemover
                         byte strength = Util.Clamp((byte)Settings.Strength.value, 0, 128);
                         byte keep = (byte)(128 - strength);
                         byte offset = strength;
-                        for (int i = 0; i < buffer.Length; i++)
-                        {
-                            buffer[i].b = (byte)(((buffer[i].b * keep) >> 7) + offset);
-                            buffer[i].a = (byte)(((buffer[i].a * keep) >> 7) + offset);
-                        }
+                        newcolor.b = (byte)(((original.b * keep) >> 7) + offset);
+                        newcolor.a = (byte)(((original.a * keep) >> 7) + offset);
                         break;
                     }
             }
-            surfaceMapAwithoutNormal.SetPixels32(buffer);
-            surfaceMapAwithoutNormal.Apply();
-        }
+            return newcolor;
 
+        }
 
         // Reassign all surface maps; force normals regeneration (necessary in case Settings.EraseClipping changed); and force all Nets to refetch their Textures.
         public static void RegenerateCache()
@@ -169,7 +198,7 @@ namespace RoadTextureTerrainEdgeRemover
             Settings.LogSettings();
             SubstituteTextures.Clear();
             //TerrainModify.RefreshAllModifications();
-            
+
             var terrainManager = Singleton<TerrainManager>.instance;
             for (int i = 0; i < terrainManager.m_patches.Length; i++)
             {
