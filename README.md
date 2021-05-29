@@ -1,7 +1,7 @@
 # RoadTextureTerrainEdgeRemover
 Keeps terrain edge artifacts from showing on roads in Cities:Skylines. Also allows to hide the cliff texture globally.
 
-![screenshot showing the same scene without the mod, and with both of it's operating modes](./screenshot_annotated.webp)
+![screenshot showing the same scene without the mod, and with both of it's operating modes](./Screenshots/screenshot_annotated.webp)
 
 ### Background:
 Networks using the RoadBase shader use the global terrain normal map instead of the normal map supplied by the asset.
