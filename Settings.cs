@@ -28,7 +28,7 @@ namespace RoadTextureTerrainEdgeRemover
 #if DEBUG
             Debug.Log("Make settings was called");
 #endif
-            helper.AddCheckbox("hide cliff texture", EraseClipping, (isChecked) => { EraseClipping.value = isChecked; SubstituteTextureManager.RegenerateCache(); });
+            helper.AddCheckbox("overwrite terrain appearance", EraseClipping, (isChecked) => { EraseClipping.value = isChecked; SubstituteTextureManager.RegenerateCache(); });
             var modeDropdown = helper.AddDropdown("operating mode", Enum.GetNames(typeof(Modes)), Mode.value, (value) => { Mode.value = value; SubstituteTextureManager.RegenerateCache(); }) as UIDropDown;
             void OnStrengthChanged(int strength, bool apply)
             {
