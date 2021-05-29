@@ -4,8 +4,10 @@ using ICities;
 // Make sure that "using HarmonyLib;" does not appear here!
 // Only reference HarmonyLib in code that runs when Harmony is ready (DoOnHarmonyReady, IsHarmonyInstalled)
 
-namespace RoadTextureTerrainEdgeRemover {
-    public class RoadTextureTerrainEdgeRemoverMod : IUserMod, ILoadingExtension{
+namespace RoadTextureTerrainEdgeRemover
+{
+    public class RoadTextureTerrainEdgeRemoverMod : IUserMod, ILoadingExtension
+    {
         // Make sure that HarmonyLib is not referenced in any way in your IUserMod implementation!
         // Instead, apply your patches from a separate static patcher class!
         // (otherwise it will fail to instantiate the type when CitiesHarmony is not installed)
@@ -15,16 +17,18 @@ namespace RoadTextureTerrainEdgeRemover {
 
         public static ILoading Loading = null;
         public static bool Enabled = false;
-        public void OnEnabled() {
+        public void OnEnabled()
+        {
             HarmonyHelper.DoOnHarmonyReady(() => Patcher.PatchAll());
             Enabled = true;
-            if(Loading != null && Loading.loadingComplete) TerrainManagerPatch.RegenerateCache();
+            if (Loading != null && Loading.loadingComplete) SubstituteTextureManager.RegenerateCache();
         }
 
-        public void OnDisabled() {
+        public void OnDisabled()
+        {
             if (HarmonyHelper.IsHarmonyInstalled) Patcher.UnpatchAll();
             Enabled = false;
-            if (Loading != null && Loading.loadingComplete) TerrainManagerPatch.RegenerateCache();
+            if (Loading != null && Loading.loadingComplete) SubstituteTextureManager.RegenerateCache();
         }
 
         public void OnSettingsUI(UIHelperBase helper)
@@ -35,7 +39,7 @@ namespace RoadTextureTerrainEdgeRemover {
         public void OnCreated(ILoading loading)
         {
             Loading = loading;
-            if (Enabled && Loading.loadingComplete) TerrainManagerPatch.RegenerateCache();
+            if (Enabled && Loading.loadingComplete) SubstituteTextureManager.RegenerateCache();
         }
 
         public void OnReleased()

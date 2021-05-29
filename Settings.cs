@@ -28,8 +28,8 @@ namespace RoadTextureTerrainEdgeRemover
 #if DEBUG
             Debug.Log("Make settings was called");
 #endif
-            helper.AddCheckbox("hide cliff texture", EraseClipping, (isChecked) => { EraseClipping.value = isChecked; TerrainManagerPatch.RegenerateCache(); });
-            var modeDropdown = helper.AddDropdown("operating mode", Enum.GetNames(typeof(Modes)), Mode.value, (value) => { Mode.value = value; TerrainManagerPatch.RegenerateCache(); }) as UIDropDown;
+            helper.AddCheckbox("hide cliff texture", EraseClipping, (isChecked) => { EraseClipping.value = isChecked; SubstituteTextureManager.RegenerateCache(); });
+            var modeDropdown = helper.AddDropdown("operating mode", Enum.GetNames(typeof(Modes)), Mode.value, (value) => { Mode.value = value; SubstituteTextureManager.RegenerateCache(); }) as UIDropDown;
             void OnStrengthChanged(int strength, bool apply)
             {
                 strengthSlider.value = strength;
@@ -37,7 +37,7 @@ namespace RoadTextureTerrainEdgeRemover
                 if (apply && strength != Strength.value)
                 {
                     Strength.value = strength;
-                    if ((Modes)Mode.value != Modes.Erase) TerrainManagerPatch.RegenerateCache();
+                    if ((Modes)Mode.value != Modes.Erase) SubstituteTextureManager.RegenerateCache();
                 }
             }
             var mainPanel = modeDropdown.parent.parent as UIScrollablePanel;
@@ -69,7 +69,7 @@ namespace RoadTextureTerrainEdgeRemover
             strengthSlider.eventMouseLeave += (_, __) => OnStrengthChanged(Mathf.RoundToInt(strengthSlider.value), true);
             strengthSlider.eventLeaveFocus += (_, __) => OnStrengthChanged(Mathf.RoundToInt(strengthSlider.value), true);
             strengthSlider.eventLostFocus += (_, __) => OnStrengthChanged(Mathf.RoundToInt(strengthSlider.value), true);
-            helper.AddCheckbox("temporarily disable the mod (for quick comparison)", TempDisable, (isChecked) => { TempDisable = isChecked; TerrainManagerPatch.RegenerateCache(); });
+            helper.AddCheckbox("temporarily disable the mod (for quick comparison)", TempDisable, (isChecked) => { TempDisable = isChecked; SubstituteTextureManager.RegenerateCache(); });
         }
 
         public static UITextField createTextField(UIHelperBase helper, string defaultContent, OnTextChanged onTextChanged, OnTextSubmitted onTextSubmitted)
