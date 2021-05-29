@@ -20,16 +20,15 @@ namespace RoadTextureTerrainEdgeRemover
         [HarmonyPatch(typeof(TerrainPatch), "Refresh")]
         static IEnumerable<CodeInstruction> RefreshTranspiler(IEnumerable<CodeInstruction> instructions)
         {
-            int sinceSurfaceMapALoaded = 10;
-            bool injected = false;
             bool lastFieldLoadedWasSurfMapA = false;
             foreach (var instruction in instructions)
             {
-                sinceSurfaceMapALoaded++;
                 if (instruction.opcode == OpCodes.Ldfld)
                 {
                     lastFieldLoadedWasSurfMapA = instruction.LoadsField(typeof(TerrainPatch).GetField("m_surfaceMapA"));
                 }
+
+
                 if (lastFieldLoadedWasSurfMapA && instruction.Calls(typeof(Texture2D).GetMethod("SetPixel", new Type[] { typeof(int), typeof(int), typeof(Color) })))
                 {
                     yield return new CodeInstruction(OpCodes.Ldarg_0); //this
@@ -50,23 +49,31 @@ namespace RoadTextureTerrainEdgeRemover
 
         public static void SetSurfaceMapAPixelReplacement(Texture2D surfaceMapA, int x, int y, Color color, TerrainPatch patch)
         {
-            var replacedSurfaceMapA = SubstituteTextureManager.GetOrCreateSubstituteTexture(patch);
-            var newcolor = ChangeColor(color);
-            replacedSurfaceMapA.SetPixel(x, y, newcolor);
-            if (replacedSurfaceMapA != surfaceMapA)
+            if (Settings.TempDisable)
             {
+                surfaceMapA.SetPixel(x, y, color);
+                return;
+            }
+            var newcolor = ChangeColor(color);
+            if (Settings.EraseClipping)
+            {
+                surfaceMapA.SetPixel(x, y, newcolor);
+            }
+            else
+            {
+                var replacedSurfaceMapA = SubstituteTextureManager.GetOrCreateSubstituteTexture(patch);
+                replacedSurfaceMapA.SetPixel(x, y, newcolor);
                 surfaceMapA.SetPixel(x, y, color);
             }
 
         }
-        public static void ApplySurfaceMapAReplacement(Texture2D surfaceMapA, bool argo, TerrainPatch patch)
+        public static void ApplySurfaceMapAReplacement(Texture2D surfaceMapA, bool updateMipmaps, TerrainPatch patch)
         {
+            surfaceMapA.Apply(updateMipmaps);
+            if (Settings.TempDisable || Settings.EraseClipping) return;
+
             var replacedSurfaceMapA = SubstituteTextureManager.GetOrCreateSubstituteTexture(patch);
-            replacedSurfaceMapA.Apply(argo);
-            if (replacedSurfaceMapA != surfaceMapA)
-            {
-                surfaceMapA.Apply(argo);
-            }
+            replacedSurfaceMapA.Apply(updateMipmaps);
         }
         static Color32 ChangeColor(Color32 original)
         {
