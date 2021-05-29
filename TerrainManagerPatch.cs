@@ -1,6 +1,8 @@
 ﻿using ColossalFramework;
 using HarmonyLib;
 using System;
+using System.Collections.Generic;
+using System.Reflection.Emit;
 using System.Threading;
 using UnityEngine;
 
@@ -28,17 +30,47 @@ namespace RoadTextureTerrainEdgeRemover
         // All branches that write to SurfaceMapA call Texture2D::Apply(), so it serves as an indicator on whether we need to erase normal map data or not.
         static bool TextureApplyCalled = false;
         static bool ForceUpdate = false;
-        [HarmonyPrefix]
-        [HarmonyPatch(typeof(Texture2D), "Apply", typeof(bool))]
-        static void TextureApplyPrefix()
+        static void OnTextureApplyCalled()
         {
             TextureApplyCalled = true;
         }
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(NetManager),"UpdateNodeRenderer")]
+        static void ThreadChecker()
+        {
+            Debug.Log("in sim thread?: " + (Thread.CurrentThread == Singleton<SimulationManager>.instance.m_simulationThread));
+        }
+
         [HarmonyPrefix]
         [HarmonyPatch(typeof(TerrainPatch), "Refresh")]
         static void RefreshPrefix()
         {
             TextureApplyCalled = false;
+        }
+#if DEBUG
+        [HarmonyDebug]
+#endif
+        [HarmonyTranspiler]
+        [HarmonyPatch(typeof(TerrainPatch), "Refresh")]
+        static IEnumerable<CodeInstruction> RefreshTranspiler(IEnumerable<CodeInstruction> instructions)
+        {
+            int sinceSurfaceMapALoaded = 10;
+            bool injected = false;
+            foreach (var instruction in instructions)
+            {
+                sinceSurfaceMapALoaded++;
+                yield return instruction;
+                if (instruction.LoadsField(typeof(TerrainPatch).GetField("m_surfaceMapA")))
+                {
+                    sinceSurfaceMapALoaded = 0;
+                }
+                if (!injected && sinceSurfaceMapALoaded<=2 && instruction.Calls(typeof(Texture2D).GetMethod("Apply", new Type[] {typeof(bool)})))
+                {
+                    yield return CodeInstruction.Call(typeof(TerrainManagerPatch), "OnTextureApplyCalled");
+                    injected = true;
+                }
+
+            }
         }
         //TODO: Maybe replace with transpiler so that the normal maps arent created in the first place?
         [HarmonyPostfix]
@@ -121,21 +153,29 @@ namespace RoadTextureTerrainEdgeRemover
             surfaceMapAwithoutNormal.SetPixels32(buffer);
             surfaceMapAwithoutNormal.Apply();
         }
-        
+
 
         // Reassign all surface maps; force normals regeneration (necessary in case Settings.EraseClipping changed); and force all Nets to refetch their Textures.
         public static void RegenerateCache()
         {
+            var simulationManager = Singleton<SimulationManager>.instance;
+            if (Thread.CurrentThread != simulationManager.m_simulationThread)
+            {
+                simulationManager.AddAction(RegenerateCache);
+                return;
+            }
             //ForceUpdate = true;
             Debug.Log("regenerating surface texture cache");
             Settings.LogSettings();
             SubstituteTextures.Clear();
-            TerrainManager terrainManager = Singleton<TerrainManager>.instance;
+            //TerrainModify.RefreshAllModifications();
+            
+            var terrainManager = Singleton<TerrainManager>.instance;
             for (int i = 0; i < terrainManager.m_patches.Length; i++)
             {
                 TerrainPatch terrainPatch = terrainManager.m_patches[i];
                 terrainPatch.m_surfaceModified.AddArea(0, 0, 1080, 1080);//values from TerrainPatch constructor
-                terrainPatch.Refresh(false, 0);
+                //terrainPatch.Refresh(false, 0); //has to happen on UI thread; happens automatically anyway
             }
             NetManager netManager = Singleton<NetManager>.instance;
             for (ushort i = 0; i < netManager.m_nodes.m_buffer.Length; i++)

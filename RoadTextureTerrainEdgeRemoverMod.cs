@@ -45,7 +45,7 @@ namespace RoadTextureTerrainEdgeRemover {
 
         public void OnLevelLoaded(LoadMode mode)
         {
-            TerrainManagerPatch.RegenerateCache();
+            //TerrainManagerPatch.RegenerateCache();
         }
         public void OnLevelUnloading()
         {
