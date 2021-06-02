@@ -9,8 +9,6 @@ using UnityEngine;
 namespace RoadTextureTerrainEdgeRemover
 {
 
-    [HarmonyPatch]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by harmony")]
     class SubstituteTextureManager
     {
         static readonly Texture2D[] SubstituteTextures = new Texture2D[81];
@@ -34,21 +32,22 @@ namespace RoadTextureTerrainEdgeRemover
         }
 
         // Reassign all surface maps; force normals regeneration (necessary in case Settings.EraseClipping changed); and force all Nets to refetch their Textures.
+        // Call from UI thread!
         public static void RegenerateCache()
         {
             var simulationManager = Singleton<SimulationManager>.instance;
             if (Thread.CurrentThread != simulationManager.m_simulationThread)
             {
+                Debug.Log("regenerating surface texture cache");
+                for (int i = 0; i < SubstituteTextures.Length; i++)
+                {
+                    SubstituteTextures[i] = null;
+                }
                 simulationManager.AddAction(RegenerateCache);
                 return;
             }
             //ForceUpdate = true;
-            Debug.Log("regenerating surface texture cache");
             Settings.LogSettings();
-            for(int i = 0; i<SubstituteTextures.Length; i++)
-            {
-                SubstituteTextures[i] = null;
-            }
             //TerrainModify.RefreshAllModifications();
 
             var terrainManager = Singleton<TerrainManager>.instance;
@@ -61,11 +60,11 @@ namespace RoadTextureTerrainEdgeRemover
             NetManager netManager = Singleton<NetManager>.instance;
             for (ushort i = 0; i < netManager.m_nodes.m_buffer.Length; i++)
             {
-                netManager.UpdateNodeRenderer(i, false);
+                netManager.UpdateNodeRenderer(i, true);
             }
             for (ushort i = 0; i < netManager.m_segments.m_buffer.Length; i++)
             {
-                netManager.UpdateSegmentRenderer(i, false);
+                netManager.UpdateSegmentRenderer(i, true);
             }
         }
     }

@@ -10,14 +10,11 @@ namespace RoadTextureTerrainEdgeRemover
 {
 
     [HarmonyPatch]
+    [HarmonyPatch(typeof(TerrainManager), "GetSurfaceMapping")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by harmony")]
     class TerrainManagerGetSurfaceMappingPatch
     {
-        static readonly System.Collections.Generic.Dictionary<Texture2D, Texture2D> SubstituteTextures = new System.Collections.Generic.Dictionary<Texture2D, Texture2D>(); //TODO: replace with 9-entry array
 
-
-        [HarmonyTranspiler]
-        [HarmonyPatch(typeof(TerrainManager), "GetSurfaceMapping")]
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             foreach(var instruction in instructions)

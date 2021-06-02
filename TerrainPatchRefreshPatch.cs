@@ -10,15 +10,14 @@ namespace RoadTextureTerrainEdgeRemover
 {
 
     [HarmonyPatch]
+    [HarmonyPatch(typeof(TerrainPatch), "Refresh")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by harmony")]
     class TerrainPatchRefreshPatch
     {
 #if DEBUG
         [HarmonyDebug]
 #endif
-        [HarmonyTranspiler]
-        [HarmonyPatch(typeof(TerrainPatch), "Refresh")]
-        static IEnumerable<CodeInstruction> RefreshTranspiler(IEnumerable<CodeInstruction> instructions)
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             bool lastFieldLoadedWasSurfMapA = false;
             foreach (var instruction in instructions)
@@ -33,11 +32,13 @@ namespace RoadTextureTerrainEdgeRemover
                 {
                     yield return new CodeInstruction(OpCodes.Ldarg_0); //this
                     yield return CodeInstruction.Call(typeof(TerrainPatchRefreshPatch), "SetSurfaceMapAPixelReplacement");
+                    Debug.Log("inserted setPixel");
                 }
                 else if (lastFieldLoadedWasSurfMapA && instruction.Calls(typeof(Texture2D).GetMethod("Apply", new Type[] { typeof(bool) })))
                 {
                     yield return new CodeInstruction(OpCodes.Ldarg_0); //this
                     yield return CodeInstruction.Call(typeof(TerrainPatchRefreshPatch), "ApplySurfaceMapAReplacement");
+                    Debug.Log("inserted apply");
                 }
                 else
                 {
