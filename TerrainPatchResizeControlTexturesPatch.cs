@@ -18,8 +18,9 @@ namespace RoadTextureTerrainEdgeRemover
         static void Postfix(TerrainPatch __instance)
         {
             if (Settings.TempDisable || Settings.EraseClipping.value) return;
-
+#if DEBUG
             Debug.Log("resizing patch (" + __instance.m_x + "|" + __instance.m_z + ")");
+#endif
             Texture2D original = __instance.m_surfaceMapA;
             Texture2D replacement = SubstituteTextureManager.GetOrCreateSubstituteTexture(__instance);
 
