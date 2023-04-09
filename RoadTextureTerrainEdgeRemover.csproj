@@ -5,9 +5,15 @@
     <AssemblyTitle>RoadTextureTerrainEdgeRemover</AssemblyTitle>
     <AssemblyVersion>1.0.*</AssemblyVersion>
     <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
+    <Version>1.1.0-beta</Version>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CitiesHarmony.API" Version="2.0.0" />
+    <Compile Remove="algodraft\**" />
+    <EmbeddedResource Remove="algodraft\**" />
+    <None Remove="algodraft\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CitiesHarmony.API" Version="2.2.0" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp">

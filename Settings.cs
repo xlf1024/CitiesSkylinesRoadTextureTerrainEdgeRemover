@@ -26,10 +26,24 @@ namespace RoadTextureTerrainEdgeRemover
         public static void OnSettingsUI(UIHelperBase helper)
         {
 #if DEBUG
-            Debug.Log("Make settings was called");
+            Debug.Log("ROTTERdam: Make settings was called");
 #endif
-            helper.AddCheckbox("overwrite terrain appearance", EraseClipping, (isChecked) => { EraseClipping.value = isChecked; SubstituteTextureManager.RegenerateCache(); });
-            var modeDropdown = helper.AddDropdown("operating mode", Enum.GetNames(typeof(Modes)), Mode.value, (value) => { Mode.value = value; SubstituteTextureManager.RegenerateCache(); }) as UIDropDown;
+            var edgeFilterSettingsGroup = helper.AddGroup("edge filter options");
+            edgeFilterSettingsGroup.AddCheckbox("enable edge filter", EnableEdgeFilter.value, (isChecked) => { EnableEdgeFilter.value = isChecked; Patcher.RepatchAll(); });
+#if DEBUG
+            edgeFilterSettingsGroup.AddCheckbox("enable debug drawing", EnableDebugOverlay, (isChecked) => { EnableDebugOverlay = isChecked; Patcher.RepatchAll(); });
+#endif
+            // todo: Range option adjustment
+            var legacySettingsGroup = helper.AddGroup("legacy options");
+            legacySettingsGroup.AddCheckbox("overwrite terrain appearance", EraseClipping, (isChecked) => { EraseClipping.value = isChecked; SubstituteTextureManager.RegenerateCache(); });
+            var modeDropdown = legacySettingsGroup.AddDropdown("operating mode", Enum.GetNames(typeof(Modes)), Mode.value, (value) =>
+            {
+                var oldmode = Mode.value;
+                Mode.value = value;
+                if (((Modes)oldmode == Modes.None) ^ ((Modes)value == Modes.None)) Patcher.RepatchAll();
+                else SubstituteTextureManager.RegenerateCache();
+            }) as UIDropDown;
+            var mainPanel = modeDropdown.parent.parent as UIPanel;
             void OnStrengthChanged(int strength, bool apply)
             {
                 strengthSlider.value = strength;
@@ -37,10 +51,9 @@ namespace RoadTextureTerrainEdgeRemover
                 if (apply && strength != Strength.value)
                 {
                     Strength.value = strength;
-                    if ((Modes)Mode.value != Modes.Erase) SubstituteTextureManager.RegenerateCache();
+                    if ((Modes)Mode.value != Modes.Erase && (Modes)Mode.value != Modes.None) SubstituteTextureManager.RegenerateCache();
                 }
             }
-            var mainPanel = modeDropdown.parent.parent as UIScrollablePanel;
             var strengthPanel = mainPanel.AddUIComponent<UIPanel>();
             strengthPanel.autoLayout = true;
             strengthPanel.autoFitChildrenHorizontally = true;
@@ -69,7 +82,7 @@ namespace RoadTextureTerrainEdgeRemover
             strengthSlider.eventMouseLeave += (_, __) => OnStrengthChanged(Mathf.RoundToInt(strengthSlider.value), true);
             strengthSlider.eventLeaveFocus += (_, __) => OnStrengthChanged(Mathf.RoundToInt(strengthSlider.value), true);
             strengthSlider.eventLostFocus += (_, __) => OnStrengthChanged(Mathf.RoundToInt(strengthSlider.value), true);
-            helper.AddCheckbox("temporarily disable the mod (for quick comparison)", TempDisable, (isChecked) => { TempDisable = isChecked; SubstituteTextureManager.RegenerateCache(); });
+            legacySettingsGroup.AddCheckbox("temporarily disable the mod (for quick comparison)", TempDisable, (isChecked) => { TempDisable = isChecked; SubstituteTextureManager.RegenerateCache(); });
         }
 
         public static UITextField createTextField(UIHelperBase helper, string defaultContent, OnTextChanged onTextChanged, OnTextSubmitted onTextSubmitted)
@@ -95,11 +108,16 @@ namespace RoadTextureTerrainEdgeRemover
             return slider;
 
         }
-        public static SavedInt Mode { get; } = new SavedInt(nameof(Mode), FileName, (int)Modes.Erase, true);
+
+        public static SavedBool EnableEdgeFilter { get; } = new SavedBool(nameof(EnableEdgeFilter), FileName, true, true);
+        public static SavedFloat EdgeFilterRange { get; } = new SavedFloat(nameof(EdgeFilterRange), FileName, 0f, true);
+        public static SavedInt Mode { get; } = new SavedInt(nameof(Mode), FileName, (int)Modes.None, true);
         public static SavedBool EraseClipping { get; } = new SavedBool(nameof(EraseClipping), FileName, false, true);
         public static SavedInt Strength { get; } = new SavedInt(nameof(Strength), FileName, 128, true);
+
         public static readonly int MaxStrength = 128;
         public static bool TempDisable = false;
+        public static bool EnableDebugOverlay = false;
         public static void LogSettings()
         {
             Debug.Log("ROTTERdam settings:\nMode: " + ((Modes)Mode.value).ToString() + "\nStrength: " + Strength.value.ToString() + "\nHide cliff texture: " + EraseClipping.value.ToString() + "\nTemporary disable:" + TempDisable.ToString());
@@ -109,6 +127,7 @@ namespace RoadTextureTerrainEdgeRemover
     {
         Erase,
         Clamp,
-        Scale
+        Scale,
+        None
     }
 }

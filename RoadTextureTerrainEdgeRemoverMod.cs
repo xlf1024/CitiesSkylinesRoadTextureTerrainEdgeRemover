@@ -19,7 +19,7 @@ namespace RoadTextureTerrainEdgeRemover
         public static bool Enabled = false;
         public void OnEnabled()
         {
-            HarmonyHelper.DoOnHarmonyReady(() => Patcher.PatchAll());
+            HarmonyHelper.DoOnHarmonyReady(() => Patcher.RepatchAll());
             Enabled = true;
             if (Loading != null && Loading.loadingComplete) SubstituteTextureManager.RegenerateCache();
         }

@@ -12,23 +12,33 @@ namespace RoadTextureTerrainEdgeRemover
     class SubstituteTextureManager
     {
         static readonly Texture2D[] SubstituteTextures = new Texture2D[81];
-         
+
 
         public static Texture2D GetOrCreateSubstituteTexture(TerrainPatch terrainPatch)
         {
             if (Settings.EraseClipping || Settings.TempDisable) return terrainPatch.m_surfaceMapA;
 
             int patchIndex = terrainPatch.m_z * 9 + terrainPatch.m_x;
-            if (SubstituteTextures[patchIndex] is null)
+            var substituteTexture = SubstituteTextures[patchIndex];
+            if (substituteTexture is null)
             {
-                Texture2D surfaceMapAwithoutNormal;
-                surfaceMapAwithoutNormal = Texture2D.Instantiate<Texture2D>(terrainPatch.m_surfaceMapA);
-                SubstituteTextures[patchIndex] = surfaceMapAwithoutNormal;
+                lock (SubstituteTextures)
+                {
+                    substituteTexture = SubstituteTextures[patchIndex];
+                    if (Settings.EraseClipping || Settings.TempDisable) return terrainPatch.m_surfaceMapA;
+                    if (substituteTexture is null)
+                    {
+                        Texture2D surfaceMapAwithoutNormal;
+                        surfaceMapAwithoutNormal = Texture2D.Instantiate<Texture2D>(terrainPatch.m_surfaceMapA);
+                        SubstituteTextures[patchIndex] = surfaceMapAwithoutNormal;
+                        substituteTexture = SubstituteTextures[patchIndex];
 #if DEBUG
-                Debug.Log("Created Substitute texture");
+                        Debug.Log("ROTTERdam: Created Substitute texture");
 #endif
+                    }
+                }
             }
-            return SubstituteTextures[patchIndex];
+            return substituteTexture;
         }
 
         // Reassign all surface maps; force normals regeneration (necessary in case Settings.EraseClipping changed); and force all Nets to refetch their Textures.
@@ -38,10 +48,13 @@ namespace RoadTextureTerrainEdgeRemover
             var simulationManager = Singleton<SimulationManager>.instance;
             if (Thread.CurrentThread != simulationManager.m_simulationThread)
             {
-                Debug.Log("regenerating surface texture cache");
-                for (int i = 0; i < SubstituteTextures.Length; i++)
+                Debug.Log("ROTTERdam: regenerating surface texture cache");
+                lock (SubstituteTextures)
                 {
-                    SubstituteTextures[i] = null;
+                    for (int i = 0; i < SubstituteTextures.Length; i++)
+                    {
+                        SubstituteTextures[i] = null;
+                    }
                 }
                 simulationManager.AddAction(RegenerateCache);
                 return;

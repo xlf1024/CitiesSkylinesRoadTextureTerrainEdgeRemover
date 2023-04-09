@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace RoadTextureTerrainEdgeRemover
 {
-
+    [LegacyModePatch]
     [HarmonyPatch]
     [HarmonyPatch(typeof(TerrainPatch), "Refresh")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by harmony")]
@@ -19,6 +19,9 @@ namespace RoadTextureTerrainEdgeRemover
 #endif
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
+#if DEBUG
+            Debug.Log("ROTTERdam: Applying TerrainPatch::Refresh transpiler for legacy modes");
+#endif
             bool lastFieldLoadedWasSurfMapA = false;
             foreach (var instruction in instructions)
             {
@@ -32,13 +35,13 @@ namespace RoadTextureTerrainEdgeRemover
                 {
                     yield return new CodeInstruction(OpCodes.Ldarg_0); //this
                     yield return CodeInstruction.Call(typeof(TerrainPatchRefreshPatch), "SetSurfaceMapAPixelReplacement");
-                    Debug.Log("inserted setPixel");
+                    Debug.Log("ROTTERdam: inserted setPixel");
                 }
                 else if (lastFieldLoadedWasSurfMapA && instruction.Calls(typeof(Texture2D).GetMethod("Apply", new Type[] { typeof(bool) })))
                 {
                     yield return new CodeInstruction(OpCodes.Ldarg_0); //this
                     yield return CodeInstruction.Call(typeof(TerrainPatchRefreshPatch), "ApplySurfaceMapAReplacement");
-                    Debug.Log("inserted apply");
+                    Debug.Log("ROTTERdam: inserted apply");
                 }
                 else
                 {

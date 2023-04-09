@@ -1,16 +1,21 @@
 ﻿using System.Reflection;
+using System.Threading;
 using HarmonyLib;
+using static RoadTextureTerrainEdgeRemover.HarmonyExtensions;
 
-namespace RoadTextureTerrainEdgeRemover {
-    public static class Patcher {
+namespace RoadTextureTerrainEdgeRemover
+{
+    public static class Patcher
+    {
         private const string HarmonyId = "xlf1024.RoadTextureTerrainEdgeRemover";
 
         private static bool patched = false;
 
-        public static void PatchAll() {
+        public static void PatchAll()
+        {
             if (patched) return;
 
-            UnityEngine.Debug.Log("RoadTextureTerrainEdgeRemover: Patching...");
+            UnityEngine.Debug.Log("ROTTERdam: Patching...");
 
             patched = true;
 
@@ -18,11 +23,32 @@ namespace RoadTextureTerrainEdgeRemover {
 #if DEBUG
             Harmony.DEBUG = true;
 #endif
-            var harmony = new Harmony("xlf1024.RoadTextureTerrainEdgeRemover");
-            harmony.PatchAll(Assembly.GetExecutingAssembly());
+            var harmony = new Harmony(HarmonyId);
+            if (Settings.EnableEdgeFilter) harmony.PatchWithAnnotation(Assembly.GetExecutingAssembly(), typeof(EdgeFilterPatch));
+            if ((Modes)Settings.Mode.value != Modes.None) harmony.PatchWithAnnotation(Assembly.GetExecutingAssembly(), typeof(LegacyModePatch));
+#if DEBUG
+            if (Settings.EnableDebugOverlay) harmony.PatchWithAnnotation(Assembly.GetExecutingAssembly(), typeof(DebugOverlayPatch));
+#endif
         }
+        public static void RepatchAll()
+        {
+            UnityEngine.Debug.Log("ROTTERdam: re-applying patches due to changed settings");
+            object simLock = typeof(SimulationManager).GetField("m_simulationFrameLock", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(SimulationManager.instance);
+            lock (simLock)
+            {
+                do
+                {
+                    Monitor.Wait(simLock, 0);
+                } while ((bool)typeof(SimulationManager).GetField("m_inSimulationStep", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(SimulationManager.instance));
 
-        public static void UnpatchAll() {
+
+                UnpatchAll();
+                PatchAll();
+                SubstituteTextureManager.RegenerateCache();
+            }
+        }
+        public static void UnpatchAll()
+        {
             if (!patched) return;
 
             var harmony = new Harmony(HarmonyId);
@@ -30,23 +56,8 @@ namespace RoadTextureTerrainEdgeRemover {
 
             patched = false;
 
-            UnityEngine.Debug.Log("RoadTextureTerrainEdgeRemover: Reverted...");
+            UnityEngine.Debug.Log("ROTTERdam: Reverted...");
         }
-    }
-	/*
-    // Random example patch
-    [HarmonyPatch(typeof(SimulationManager), "CreateRelay")]
-    public static class SimulationManagerCreateRelayPatch {
-        public static void Prefix() {
-            UnityEngine.Debug.Log("CreateRelay Prefix");
-        }
-    }
 
-    // Random example patch
-    [HarmonyPatch(typeof(LoadingManager), "MetaDataLoaded")]
-    public static class LoadingManagerMetaDataLoadedPatch {
-        public static void Prefix() {
-            UnityEngine.Debug.Log("MetaDataLoaded Prefix");
-        }
-    }*/
+    }
 }

@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace RoadTextureTerrainEdgeRemover
 {
-
+    [LegacyModePatch]
     [HarmonyPatch]
     [HarmonyPatch(typeof(TerrainManager), "GetSurfaceMapping")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by harmony")]

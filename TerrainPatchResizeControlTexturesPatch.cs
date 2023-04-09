@@ -9,6 +9,7 @@ using UnityEngine;
 namespace RoadTextureTerrainEdgeRemover
 {
 
+    [LegacyModePatch]
     [HarmonyPatch]
     [HarmonyPatch(typeof(TerrainPatch), "ResizeControlTextures")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by harmony")]
@@ -19,7 +20,7 @@ namespace RoadTextureTerrainEdgeRemover
         {
             if (Settings.TempDisable || Settings.EraseClipping.value) return;
 #if DEBUG
-            Debug.Log("resizing patch (" + __instance.m_x + "|" + __instance.m_z + ")");
+            Debug.Log("ROTTERdam: resizing patch (" + __instance.m_x + "|" + __instance.m_z + ")");
 #endif
             Texture2D original = __instance.m_surfaceMapA;
             Texture2D replacement = SubstituteTextureManager.GetOrCreateSubstituteTexture(__instance);
