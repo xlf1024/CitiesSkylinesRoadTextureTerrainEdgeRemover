@@ -25,12 +25,33 @@ namespace RoadTextureTerrainEdgeRemover
             }
             else
             {
-                foreach(IFormatProvider provider in new IFormatProvider[]{CultureInfo.InvariantCulture, CultureInfo.CurrentCulture, CultureInfo.CurrentUICulture,
+                foreach (IFormatProvider provider in new IFormatProvider[]{CultureInfo.InvariantCulture, CultureInfo.CurrentCulture, CultureInfo.CurrentUICulture,
     CultureInfo.InstalledUICulture })
                 {
-                    if(Double.TryParse(s, style, provider, out x))
+                    if (Double.TryParse(s, style, provider, out x))
                     {
                         return Mathf.Clamp(Mathf.RoundToInt((float)x), min, max);
+                    }
+                }
+                return fallback;
+            }
+        }
+        public static float LenientStringToFloat(string s, float min, float max, float fallback)
+        {
+            IFormatProvider invariantProvider = CultureInfo.InvariantCulture;
+            NumberStyles style = NumberStyles.Any;
+            if (Double.TryParse(s.Replace(',', '.'), style, invariantProvider, out double x))
+            {
+                return Mathf.Clamp((float)x, min, max);
+            }
+            else
+            {
+                foreach (IFormatProvider provider in new IFormatProvider[]{CultureInfo.InvariantCulture, CultureInfo.CurrentCulture, CultureInfo.CurrentUICulture,
+    CultureInfo.InstalledUICulture })
+                {
+                    if (Double.TryParse(s, style, provider, out x))
+                    {
+                        return Mathf.Clamp((float)x, min, max);
                     }
                 }
                 return fallback;
